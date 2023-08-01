@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>USC Whispers</title>
+    <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script src="//cdn.socket.io/socket.io-1.2.0.js"></script>
+    <style>
+     #main-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .list-group {
+      max-width: 700px; 
+      margin: 0 auto;
+    }
+
+    .list-group-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+    }
+
+    .list-group-item .btn-group {
+      display: flex;
+      align-items: center;
+      margin-left: 10px; 
+      gap:10px;
+    }
+
+    .list-group-item .btn-group button {
+      margin-left: 10px;
+      padding-right: 10px;
+    }
+
+    .list-group-item .d-flex.align-items-center.flex-grow-1 {
+      word-wrap: break-word;
+      max-width: calc(100% - 170px);
+      margin-right: 10px;
+    }
+
+    .list-group-item strong {
+      width: 150px; 
+      text-align: center; 
+      margin-right: 10px; 
+    }
+
+    .list-group-item p {
+      flex-grow: 1; 
+    }
+
+    .form-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .form-container input[type=text],
+    .form-container textarea {
+      width: 100%;
+      padding: 12px 20px;
+      margin: 8px 0;
+      box-sizing: border-box;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+      resize: vertical;
+    }
+
+    .form-container input[type=submit] {
+      background-color: #990000;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+ 
+    @media screen and (min-width: 700px) {
+      .form-container {
+        max-width: 700px;
+        margin: 0 auto;
+      }
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .btn {
+      background-color: #990000;
+      color: white;
+      box-shadow: none;
+      border-radius: 4px;
+    }
+
+    .btn:hover {
+      background-color: #8b0000;
+    }
+
+    .btn-group button {
+      padding-right: 10px;
+      border: none;
+      background-color: #990000;
+      color: white;
+      box-shadow: none;
+      border-radius: 4px;
+      margin-left: 20px;
+    }
+
+
+    #toggle-history {
+      background-color: #990000;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #toggle-history:hover {
+      background-color: #8b0000;
+    }
+
+    body {
+        background-color: black;
+        color: white;
+      }
+
+      input[type=text], textarea {
+        background-color: #333;
+        color: white;
+      }
+
+      .edit-message {
+        display: none;
+      }
+    </style>
+
+    <script type="text/javascript">
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+        $(document).ready(function() {
+            $('#send').click(function() {
+                socket.emit('message', {'name': $('#name').val(), 'message': $('#message').val()});
+                $('#message').val('');
+            });
+            socket.on('message', function(data) {
+                $('#messages').append($('<li>').text(data['name'] + ': ' + data['message']));
+            });
+
+            document.getElementById("toggle-history").addEventListener("click", function () {
+                var historiesElement = document.getElementById("histories");
+                if (historiesElement.style.display === "none") {
+                    historiesElement.style.display = "block";
+                } else {
+                    historiesElement.style.display = "none";
+                }
+            });
+        });
+
+        function toggleEditForm(id) {
+            const editForm = document.getElementById('edit_form_' + id);
+            editForm.style.display = editForm.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+</head>
+
+<body>
+    <div id="main-container">
+        <h1>USC Whispers</h1>
+
+        <button id="toggle-history">History</button>
+        <ul id="histories" style="display: none;">
+            {% for history_group in histories %}
+                {% for history in history_group.history %}
+                    <li>{{ history.username }}: {{ history.message }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+
+        <ul class="list-group">
+          {% for message in messages %}
+          <div class="list-group-item d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center flex-grow-1">
+              <strong>{{ message.username }}</strong>: {{ message.message }}
+            </div>
+            <div class="btn-group">
+              <button type="submit" class="btn btn-danger" form="delete_form_{{ message._id }}" name="formType" value="delete_form">Delete</button>
+              <button type="button" class="btn btn-warning" onclick="toggleEditForm('{{ message._id }}')">Edit</button>
+              <button type="submit" class="btn btn-success" form="save_form_{{ message._id }}" name="formType" value="save_form">Save</button>
+
+              <form id="delete_form_{{ message._id }}" method="POST" class="d-none">
+                <input type="hidden" name="messageId" value="{{ message._id }}">
+              </form>
+
+              <form id="edit_form_{{ message._id }}" method="POST" class="edit-message">
+                <input type="hidden" name="messageId" value="{{ message._id }}">
+                <div class="input-group">
+                    <input type="text" name="message" class="form-control" value="{{ message.message }}">
+                    <div class="input-group-append">
+                        <button type="submit" class="btn btn-primary" name="formType" value="edit_form">Confirm Edit</button>
+                    </div>
+                </div>
+              </form>
+
+              <form id="save_form_{{ message._id }}" method="POST" class="d-none">
+                <input type="hidden" name="messageId" value="{{ message._id }}">
+              </form>
+
+            </div>
+          </div>
+          {% endfor %}
+        </ul>
+
+        <h2>Whispers Something.....</h2>
+        <div class="form-container">
+          <form method="POST" action="{{ url_for('home') }}">
+            <input value="add_form" type="hidden" name="formType">
+            <input type="text" name="name" placeholder='Choose your alias'>
+            <textarea name="message" placeholder="Write your whispers..."></textarea>
+            <input type="submit" value="Send" id="send">
+          </form>
+        </div>
+
+        
+        <ul id="messages"></ul>
+    </div>
+</body>
+</html>
